@@ -16,10 +16,14 @@ client = ElevenLabs(api_key=ELEVENLABS_API_KEY)
 # Inicializar la app Flask
 app = Flask(__name__)
 
+# Definir la carpeta donde se almacenarán los archivos
+STATIC_FOLDER = os.path.join(os.getcwd(), 'static')
+os.makedirs(STATIC_FOLDER, exist_ok=True)  # Crear la carpeta si no existe
+
 # Función para convertir texto a archivo de audio
 def text_to_speech_file(text: str) -> str:
     response = client.text_to_speech.convert(
-        voice_id="Xb7hH8MSUJpSbSDYk0k2",  # Voz Alice
+        voice_id="Xb7hH8MSUJpSbSDYk0k2",  # Voz "Alice"
         optimize_streaming_latency="0",
         output_format="mp3_22050_32",
         text=text,
@@ -32,8 +36,9 @@ def text_to_speech_file(text: str) -> str:
         ),
     )
 
-    # Generar un nombre de archivo único
-    save_file_path = f"{uuid.uuid4()}.mp3"
+    # Generar un nombre de archivo único y guardarlo en la carpeta static
+    file_name = f"{uuid.uuid4()}.mp3"
+    save_file_path = os.path.join(STATIC_FOLDER, file_name)
 
     # Guardar el archivo de audio
     with open(save_file_path, "wb") as f:
@@ -41,10 +46,10 @@ def text_to_speech_file(text: str) -> str:
             if chunk:
                 f.write(chunk)
 
-    return save_file_path
+    return file_name
 
 # Ruta para manejar las solicitudes POST
-@app.route('/generate-audio', methods=['POST'])
+@app.route('/convert', methods=['POST'])
 def generate_audio():
     try:
         data = request.get_json()
@@ -52,10 +57,11 @@ def generate_audio():
             return jsonify({'error': 'Invalid input'}), 400
 
         # Convertir el texto a archivo de audio
-        file_path = text_to_speech_file(data['Text'])
+        file_name = text_to_speech_file(data['Text'])
 
         # Devolver la URL del archivo
-        return jsonify({'file_url': f"/static/{file_path}"})
+        file_url = f"/static/{file_name}"
+        return jsonify({'file_url': file_url})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
